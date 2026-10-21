@@ -156,6 +156,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                     ),
                     const SizedBox(height: 32),
                     PrimaryButton(
+                      isLoading: false,
                       text: 'Add to Cart',
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
