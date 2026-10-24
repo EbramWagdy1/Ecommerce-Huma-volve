@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import '../../../../core/dummy_data.dart';
-import '../../../../core/theme.dart';
-import '../../../details/screens/product_details_screen.dart';
-import '../../models/product_model.dart';
+import '../../../../../core/dummy_data.dart';
+import '../../../../../core/theme.dart';
+import '../../../../details/screens/product_details_screen.dart';
+import '../../../domain/entities/home_product_entity.dart';
 
 class ProductCard extends StatelessWidget {
-  final ProductModel product;
+  final ProductEntity product;
 
   const ProductCard({super.key, required this.product});
 
