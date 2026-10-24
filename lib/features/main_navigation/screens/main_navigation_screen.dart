@@ -1,10 +1,13 @@
 import 'package:ecommerce_app_huma_volve/core/network/api_client.dart';
-import 'package:ecommerce_app_huma_volve/features/home/service/home_service.dart';
-import 'package:ecommerce_app_huma_volve/features/home/view_model/cubit/home_cubit.dart';
+import 'package:ecommerce_app_huma_volve/features/home/data/data_source/home_remote_data_source_imp.dart';
+import 'package:ecommerce_app_huma_volve/features/home/data/repository/home_repo_imp.dart';
+import 'package:ecommerce_app_huma_volve/features/home/domain/use_cases/get_categories_use_case.dart';
+import 'package:ecommerce_app_huma_volve/features/home/domain/use_cases/get_product_use_case.dart';
+import 'package:ecommerce_app_huma_volve/features/home/pressention/view/screens/home_screen.dart';
+import 'package:ecommerce_app_huma_volve/features/home/pressention/view_model/cubit/home_cubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/theme.dart';
-import '../../home/view/screens/home_screen.dart';
 import '../../cart/screens/cart_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 
@@ -20,9 +23,17 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   final List<Widget> _screens = [
     BlocProvider(
-      create: (context) => HomeCubit(HomeService(ApiClient()))
-        ..getCategories()
-        ..getProducts(),
+      create: (context) {
+        final apiClient = ApiClient();
+        final remoteDataSource = HomeRemoteDataSourceImpl(apiClient);
+        final repository = HomeRepoImp(remoteDataSource);
+        return HomeCubit(
+          getCategoriesUseCase: GetCategoriesUseCase(repository),
+          getProductsUseCase: GetProductsUseCase(repository),
+        )
+          ..getCategories()
+          ..getProducts();
+      },
       child: const HomeScreen(),
     ),
     const CartScreen(),
