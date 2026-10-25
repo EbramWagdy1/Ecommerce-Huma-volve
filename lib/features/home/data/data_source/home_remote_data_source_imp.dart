@@ -37,13 +37,23 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
   }
 
   @override
-  Future<List<ProductModel>> getProducts([int? categoryId]) async {
+  Future<List<ProductModel>> getProducts({
+    int? categoryId,
+    int offset = 0,
+    int limit = 10,
+  }) async {
     try {
       final String path = categoryId != null
           ? "${ApiEndpoint.categories}/$categoryId/${ApiEndpoint.products}"
           : ApiEndpoint.products;
 
-      final response = await apiService.dio.get(path);
+      final response = await apiService.dio.get(
+        path,
+        queryParameters: {
+          'offset': offset,
+          'limit': limit,
+        },
+      );
       final dynamic data = response.data;
       final List rawList = data is List
           ? data
@@ -61,6 +71,10 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
             }
           })
           .whereType<ProductModel>()
+          .where((product) =>
+              product.images != null &&
+              product.images!.isNotEmpty &&
+              product.images!.any((img) => img.trim().startsWith('http')))
           .toList();
     } catch (e) {
       throw ErrorHandler.handleException(e);

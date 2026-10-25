@@ -3,6 +3,7 @@ import '../../../../../core/dummy_data.dart';
 import '../../../../../core/theme.dart';
 import '../../../../details/screens/product_details_screen.dart';
 import '../../../domain/entities/home_product_entity.dart';
+import 'package:ecommerce_app_huma_volve/features/home/data/models/product_model.dart';
 
 class ProductCard extends StatelessWidget {
   final ProductEntity product;
@@ -11,9 +12,12 @@ class ProductCard extends StatelessWidget {
 
   String get _imageUrl {
     if (product.images != null && product.images!.isNotEmpty) {
-      String url = product.images!.first;
-      url = url.replaceAll('[', '').replaceAll(']', '').replaceAll('"', '').trim();
-      return url;
+      for (final img in product.images!) {
+        final clean = ProductModel.cleanUrl(img);
+        if (clean.isNotEmpty) {
+          return clean;
+        }
+      }
     }
     return '';
   }
@@ -76,19 +80,47 @@ class ProductCard extends StatelessWidget {
                               fit: BoxFit.cover,
                               width: double.infinity,
                               height: double.infinity,
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Container(
+                                  color: Colors.grey.shade100,
+                                  child: const Center(
+                                    child: SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    ),
+                                  ),
+                                );
+                              },
                               errorBuilder: (context, error, stackTrace) =>
                                   Container(
-                                color: Colors.grey.shade200,
-                                child: const Center(
-                                  child: Icon(Icons.image_not_supported,
-                                      color: Colors.grey),
+                                color: Colors.grey.shade100,
+                                child: Center(
+                                  child: Image.network(
+                                    dummyProducts[0].imageUrl,
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    errorBuilder: (c, e, s) => const Center(
+                                      child: Icon(
+                                        Icons.shopping_bag_outlined,
+                                        color: Colors.grey,
+                                        size: 36,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
                             )
                           : Container(
-                              color: Colors.grey.shade200,
+                              color: Colors.grey.shade100,
                               child: const Center(
-                                child: Icon(Icons.image, color: Colors.grey),
+                                child: Icon(
+                                  Icons.shopping_bag_outlined,
+                                  color: Colors.grey,
+                                  size: 36,
+                                ),
                               ),
                             ),
                     ),

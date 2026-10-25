@@ -13,6 +13,12 @@ class HomeCubit extends Cubit<HomeState> {
   List<CategoryEntity> categories = [];
   List<ProductEntity> products = [];
 
+  int offset = 0;
+  static const int limit = 10;
+  bool hasMore = true;
+  bool isLoadingMore = false;
+  int? currentCategoryId;
+
   HomeCubit({
     required this.getCategoriesUseCase,
     required this.getProductsUseCase,
@@ -30,15 +36,58 @@ class HomeCubit extends Cubit<HomeState> {
     );
   }
 
-  Future<void> getProducts({int? categoryId}) async {
-    emit(ProductsLoading());
-    final result = await getProductsUseCase.invoke(categoryId);
-    result.fold(
-      (failure) => emit(ProductsError(message: failure.message)),
-      (data) {
-        products = data;
-        emit(ProductsSuccess(products: products));
-      },
-    );
+  Future<void> getProducts({int? categoryId, bool isLoadMore = false}) async {
+    if (isLoadMore) {
+      if (isLoadingMore || !hasMore) return;
+      isLoadingMore = true;
+      emit(ProductsPaginationLoading());
+
+      final result = await getProductsUseCase.invoke(
+        categoryId: currentCategoryId,
+        offset: offset,
+        limit: limit,
+      );
+
+      result.fold(
+        (failure) {
+          isLoadingMore = false;
+          emit(ProductsPaginationError(message: failure.message));
+        },
+        (data) {
+          isLoadingMore = false;
+          products.addAll(data);
+          offset += data.length;
+          if (data.length < limit) {
+            hasMore = false;
+          }
+          emit(ProductsSuccess(products: List.of(products), hasMore: hasMore));
+        },
+      );
+    } else {
+      currentCategoryId = categoryId;
+      offset = 0;
+      hasMore = true;
+      isLoadingMore = false;
+      products = [];
+      emit(ProductsLoading());
+
+      final result = await getProductsUseCase.invoke(
+        categoryId: currentCategoryId,
+        offset: offset,
+        limit: limit,
+      );
+
+      result.fold(
+        (failure) => emit(ProductsError(message: failure.message)),
+        (data) {
+          products = data;
+          offset = data.length;
+          if (data.length < limit) {
+            hasMore = false;
+          }
+          emit(ProductsSuccess(products: List.of(products), hasMore: hasMore));
+        },
+      );
+    }
   }
 }

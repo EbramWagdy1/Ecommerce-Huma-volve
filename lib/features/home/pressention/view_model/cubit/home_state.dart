@@ -20,7 +20,15 @@ class ProductsLoading extends HomeState {}
 
 class ProductsSuccess extends HomeState {
   final List<ProductEntity> products;
-  ProductsSuccess({required this.products});
+  final bool hasMore;
+  ProductsSuccess({required this.products, this.hasMore = true});
+}
+
+class ProductsPaginationLoading extends HomeState {}
+
+class ProductsPaginationError extends HomeState {
+  final String message;
+  ProductsPaginationError({required this.message});
 }
 
 class ProductsError extends HomeState {

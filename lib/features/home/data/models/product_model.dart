@@ -16,13 +16,75 @@ class ProductModel extends ProductEntity {
         title: json["title"]?.toString(),
         price: json["price"] is num ? json["price"] as num : num.tryParse(json["price"]?.toString() ?? ''),
         description: json["description"]?.toString(),
-        images: json["images"] is List
-            ? (json["images"] as List).map((x) => x.toString()).toList()
-            : null,
+        images: _parseImages(json["images"]),
         category: json["category"] is Map
             ? CategoryModel.fromJson(json["category"] as Map)
             : null,
       );
+
+  static String _stripJunk(String input) {
+    return input
+        .replaceAll('[', '')
+        .replaceAll(']', '')
+        .replaceAll('"', '')
+        .replaceAll("'", '')
+        .replaceAll(r'\', '')
+        .trim();
+  }
+
+  static List<String> _parseImages(dynamic rawImages) {
+    if (rawImages == null) return [];
+    final List<dynamic> list;
+    if (rawImages is List) {
+      list = rawImages;
+    } else if (rawImages is String) {
+      list = [rawImages];
+    } else {
+      return [];
+    }
+
+    final List<String> sanitizedImages = [];
+    for (final item in list) {
+      if (item == null) continue;
+      final String str = _stripJunk(item.toString());
+
+      // In case multiple comma-separated URLs were squashed into one string
+      final parts = str.contains(',') ? str.split(',') : [str];
+      for (final part in parts) {
+        final clean = cleanUrl(part);
+        if (clean.isNotEmpty && !sanitizedImages.contains(clean)) {
+          sanitizedImages.add(clean);
+        }
+      }
+    }
+    return sanitizedImages;
+  }
+
+  static String cleanUrl(String? rawUrl) {
+    if (rawUrl == null) return '';
+    String url = _stripJunk(rawUrl);
+
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      return '';
+    }
+
+    // Fix placehold.co SVG issue: Flutter cannot render SVG with Image.network
+    // Appending .png before any query params instructs placehold.co to return PNG
+    if (url.contains('placehold.co')) {
+      final uri = Uri.tryParse(url);
+      if (uri != null) {
+        String path = uri.path;
+        if (!path.endsWith('.png') &&
+            !path.endsWith('.jpg') &&
+            !path.endsWith('.jpeg')) {
+          path = '$path.png';
+          url = uri.replace(path: path).toString();
+        }
+      }
+    }
+
+    return url;
+  }
 
   Map<String, dynamic> toJson() => {
         "id": id,
