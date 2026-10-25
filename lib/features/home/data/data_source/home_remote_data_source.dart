@@ -5,3 +5,4 @@ abstract class HomeRemoteDataSource {
   Future<List<CategoryModel>> getCategories();
   Future<List<ProductModel>> getProducts([int? categoryId]);
 }
+

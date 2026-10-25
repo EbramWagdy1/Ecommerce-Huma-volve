@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../../core/storage/secure_storage.dart';
 import '../../../core/theme.dart';
 import '../../auth/view/login/screens/login_screen.dart';
+import '../../main_navigation/screens/main_navigation_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -18,11 +20,17 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _navigateToNext() async {
     await Future.delayed(const Duration(seconds: 2));
+    final token = await SecureStorage.getAccessToken();
+
     if (mounted) {
+      final Widget targetScreen = (token != null && token.isNotEmpty)
+          ? const MainNavigationScreen()
+          : const LoginScreen();
+
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => const LoginScreen(),
+          pageBuilder: (context, animation, secondaryAnimation) => targetScreen,
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);
           },

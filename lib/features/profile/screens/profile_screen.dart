@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/dummy_data.dart';
+import '../../../core/storage/secure_storage.dart';
 import '../../../core/theme.dart';
 import '../widgets/profile_menu_item.dart';
 import '../../auth/view/login/screens/login_screen.dart';
@@ -98,7 +99,9 @@ class ProfileScreen extends StatelessWidget {
                     icon: Icons.logout,
                     title: 'Logout',
                     isDestructive: true,
-                    onTap: () {
+                    onTap: () async {
+                      await SecureStorage.deleteTokens();
+                      if (!context.mounted) return;
                       Navigator.pushReplacement(
                         context,
                         PageRouteBuilder(
