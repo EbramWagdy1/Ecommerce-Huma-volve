@@ -1,32 +1,232 @@
 import 'package:flutter/material.dart';
 import '../../../core/dummy_data.dart';
+import '../../../core/network/api_client.dart';
+import '../../../core/services/deep_link_service.dart';
 import '../../../core/theme.dart';
+import '../../../core/widgets/primary_button.dart';
+import '../../home/data/data_source/home_remote_data_source_imp.dart';
+import '../../home/data/repository/home_repo_imp.dart';
 import '../widgets/color_selector.dart';
 import '../widgets/size_selector.dart';
-import '../../../core/widgets/primary_button.dart';
 
 class ProductDetailsScreen extends StatefulWidget {
-  final Product product;
+  final Product? product;
+  final String? productId;
 
-  const ProductDetailsScreen({super.key, required this.product});
+  const ProductDetailsScreen({
+    super.key,
+    this.product,
+    this.productId,
+  }) : assert(
+          product != null || productId != null,
+          'Either product or productId must be provided',
+        );
 
   @override
   State<ProductDetailsScreen> createState() => _ProductDetailsScreenState();
 }
 
 class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
+  Product? _product;
+  bool _isLoading = false;
+  String? _errorMessage;
   late Color _selectedColor;
   late String _selectedSize;
 
   @override
   void initState() {
     super.initState();
-    _selectedColor = widget.product.colors.first;
-    _selectedSize = widget.product.sizes.first;
+    if (widget.product != null) {
+      _product = widget.product;
+      _initProductProps();
+    } else if (widget.productId != null) {
+      _fetchProductById(widget.productId!);
+    }
+  }
+
+  void _initProductProps() {
+    if (_product != null) {
+      _selectedColor =
+          _product!.colors.isNotEmpty ? _product!.colors.first : Colors.black;
+      _selectedSize =
+          _product!.sizes.isNotEmpty ? _product!.sizes.first : 'M';
+    }
+  }
+
+  Future<void> _fetchProductById(String id) async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final dummyMatch = dummyProducts.where((p) => p.id == id);
+    if (dummyMatch.isNotEmpty) {
+      setState(() {
+        _product = dummyMatch.first;
+        _initProductProps();
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      final parsedId = int.tryParse(id);
+      if (parsedId != null) {
+        final apiClient = ApiClient();
+        final remoteDataSource = HomeRemoteDataSourceImpl(apiClient);
+        final repo = HomeRepoImp(remoteDataSource);
+        final result = await repo.getProductById(parsedId);
+
+        if (!mounted) return;
+
+        result.fold(
+          (failure) {
+            setState(() {
+              _errorMessage = failure.message;
+              _isLoading = false;
+            });
+          },
+          (entity) {
+            setState(() {
+              _product = Product.fromEntity(entity);
+              _initProductProps();
+              _isLoading = false;
+            });
+          },
+        );
+      } else {
+        setState(() {
+          _errorMessage = "Invalid product ID: $id";
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _shareCurrentProduct() {
+    if (_product == null) return;
+    DeepLinkService.shareProduct(
+      productId: _product!.id,
+      title: _product!.name,
+      price: _product!.price,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppTheme.background,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.9),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.arrow_back_ios_new, size: 16),
+            ),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Loading product details...',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_errorMessage != null || _product == null) {
+      return Scaffold(
+        backgroundColor: AppTheme.background,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.9),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.arrow_back_ios_new, size: 16),
+            ),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.error_outline_rounded,
+                  size: 64,
+                  color: Colors.redAccent,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _errorMessage ?? 'Product not found',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                if (widget.productId != null)
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: const Icon(Icons.refresh, color: Colors.white),
+                    label: const Text(
+                      'Retry',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    onPressed: () => _fetchProductById(widget.productId!),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final product = _product!;
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: CustomScrollView(
@@ -54,6 +254,21 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                     color: Colors.white.withValues(alpha: 0.9),
                     shape: BoxShape.circle,
                   ),
+                  child: const Icon(
+                    Icons.share_outlined,
+                    size: 18,
+                    color: AppTheme.primary,
+                  ),
+                ),
+                onPressed: _shareCurrentProduct,
+              ),
+              IconButton(
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    shape: BoxShape.circle,
+                  ),
                   child: const Icon(Icons.favorite_border, size: 18),
                 ),
                 onPressed: () {},
@@ -62,9 +277,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             ],
             flexibleSpace: FlexibleSpaceBar(
               background: Hero(
-                tag: 'product-${widget.product.id}',
+                tag: 'product-${product.id}',
                 child: Image.network(
-                  widget.product.imageUrl,
+                  product.imageUrl,
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) => Container(
                     color: Colors.grey.shade100,
@@ -100,53 +315,59 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        
                         Expanded(
-                          
                           child: Text(
-                            widget.product.name,
-                            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                              fontSize: 28,
-                              height: 1.2,
-                            ),
+                            product.name,
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineLarge
+                                ?.copyWith(
+                                  fontSize: 28,
+                                  height: 1.2,
+                                ),
                           ),
                         ),
                         const SizedBox(width: 16),
-                       
                         Text(
-                          '\$${widget.product.price.toStringAsFixed(2)}',
-                          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                            color: AppTheme.primary,
-                            fontSize: 24,
-                          ),
+                          '\$${product.price.toStringAsFixed(2)}',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineLarge
+                              ?.copyWith(
+                                color: AppTheme.primary,
+                                fontSize: 24,
+                              ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 24),
                     Text(
                       'Description',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style:
+                          Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      widget.product.description,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        height: 1.6,
-                        fontSize: 16,
-                      ),
+                      product.description,
+                      style:
+                          Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                height: 1.6,
+                                fontSize: 16,
+                              ),
                     ),
                     const SizedBox(height: 24),
                     Text(
                       'Select Color',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style:
+                          Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                     ),
                     const SizedBox(height: 12),
                     ColorSelector(
-                      colors: widget.product.colors,
+                      colors: product.colors,
                       selectedColor: _selectedColor,
                       onColorSelected: (color) {
                         setState(() {
@@ -157,13 +378,14 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                     const SizedBox(height: 24),
                     Text(
                       'Select Size',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style:
+                          Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                     ),
                     const SizedBox(height: 12),
                     SizeSelector(
-                      sizes: widget.product.sizes,
+                      sizes: product.sizes,
                       selectedSize: _selectedSize,
                       onSizeSelected: (size) {
                         setState(() {
@@ -178,7 +400,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('${widget.product.name} added to cart'),
+                            content: Text('${product.name} added to cart'),
                             behavior: SnackBarBehavior.floating,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),

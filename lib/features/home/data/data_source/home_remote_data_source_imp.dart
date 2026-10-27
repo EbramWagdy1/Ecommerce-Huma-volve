@@ -80,4 +80,18 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
       throw ErrorHandler.handleException(e);
     }
   }
+
+  @override
+  Future<ProductModel> getProductById(int id) async {
+    try {
+      final response = await apiService.dio.get('${ApiEndpoint.products}/$id');
+      final dynamic data = response.data;
+      if (data is Map) {
+        return ProductModel.fromJson(data);
+      }
+      throw ErrorHandler.handleException('Invalid product data');
+    } catch (e) {
+      throw ErrorHandler.handleException(e);
+    }
+  }
 }

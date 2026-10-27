@@ -3,6 +3,7 @@ import '../../../../../core/dummy_data.dart';
 import '../../../../../core/theme.dart';
 import '../../../../details/screens/product_details_screen.dart';
 import '../../../domain/entities/home_product_entity.dart';
+import 'package:ecommerce_app_huma_volve/core/services/deep_link_service.dart';
 import 'package:ecommerce_app_huma_volve/features/home/data/models/product_model.dart';
 
 class ProductCard extends StatelessWidget {
@@ -123,6 +124,31 @@ class ProductCard extends StatelessWidget {
                                 ),
                               ),
                             ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 12,
+                    left: 12,
+                    child: GestureDetector(
+                      onTap: () {
+                        DeepLinkService.shareProduct(
+                          productId: product.id?.toString() ?? '0',
+                          title: product.title ?? 'Product',
+                          price: (product.price ?? 0).toDouble(),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.share_outlined,
+                          size: 18,
+                          color: AppTheme.primary,
+                        ),
+                      ),
                     ),
                   ),
                   Positioned(

@@ -18,6 +18,32 @@ class Product {
     required this.colors,
     required this.sizes,
   });
+
+  factory Product.fromEntity(dynamic entity) {
+    String cleanImg = '';
+    final images = entity.images;
+    if (images != null && images is List && images.isNotEmpty) {
+      for (final img in images) {
+        if (img != null) {
+          final str = img.toString().replaceAll('[', '').replaceAll(']', '').replaceAll('"', '').replaceAll("'", '').trim();
+          if (str.startsWith('http://') || str.startsWith('https://')) {
+            cleanImg = str;
+            break;
+          }
+        }
+      }
+    }
+
+    return Product(
+      id: entity.id?.toString() ?? '0',
+      name: entity.title?.toString() ?? '',
+      description: entity.description?.toString() ?? '',
+      price: (entity.price != null && entity.price is num) ? (entity.price as num).toDouble() : 0.0,
+      imageUrl: cleanImg.isNotEmpty ? cleanImg : dummyProducts[0].imageUrl,
+      colors: const [Colors.black, Colors.blue, Colors.brown],
+      sizes: const ['S', 'M', 'L', 'XL'],
+    );
+  }
 }
 
 final dummyProducts = [

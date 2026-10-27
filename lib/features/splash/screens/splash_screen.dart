@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/services/deep_link_service.dart';
 import '../../../core/storage/secure_storage.dart';
 import '../../../core/theme.dart';
 import '../../auth/view/login/screens/login_screen.dart';
@@ -27,7 +28,7 @@ class _SplashScreenState extends State<SplashScreen> {
           ? const MainNavigationScreen()
           : const LoginScreen();
 
-      Navigator.pushReplacement(
+      await Navigator.pushReplacement(
         context,
         PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) => targetScreen,
@@ -36,6 +37,9 @@ class _SplashScreenState extends State<SplashScreen> {
           },
         ),
       );
+
+      // Process any pending deep link if cold started
+      DeepLinkService.processPendingLink();
     }
   }
 

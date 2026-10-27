@@ -8,5 +8,6 @@ abstract class HomeRemoteDataSource {
     int offset = 0,
     int limit = 10,
   });
+  Future<ProductModel> getProductById(int id);
 }
 
